@@ -4,15 +4,7 @@ from collections import namedtuple
 
 from django.conf import settings
 
-# django-s3direct accesses AWS credentials from Django config and provides
-# an optional ability to retrieve credentials from EC2 instance profile if
-# AWS settings are set to None. This optional ability requires botocore,
-# however dependency on botocore is not enforced as this a secondary
-# method for retrieving credentials.
-try:
-    from botocore import session
-except ImportError:
-    session = None
+from .credentials import CachedAWSCredentials
 
 AWSCredentials = namedtuple('AWSCredentials',
                             ['token', 'secret_key', 'access_key'])
@@ -70,11 +62,8 @@ def get_aws_credentials():
         # AWS tokens are not created for pregenerated access keys
         return AWSCredentials(None, secret_key, access_key)
 
-    if not session:
-        # AWS credentials are not required for publicly-writable buckets
-        return AWSCredentials(None, None, None)
-
-    creds = session.get_session().get_credentials()
+  
+    creds = CachedAWSCredentials.get()
     if creds:
         return AWSCredentials(creds.token, creds.secret_key, creds.access_key)
     else:
